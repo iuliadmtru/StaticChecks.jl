@@ -28,12 +28,12 @@ end
 
 function check_nothing_equality(x::JuliaSyntax.SyntaxNode)
     if is_binary_call(x)
-        if JuliaSyntax.head(x.children[2]).kind === K"==" && (
+        if JuliaSyntax.kind(x.children[2]) === K"==" && (
             x.children[1].data.val === :nothing ||
             x.children[3].data.val === :nothing
             )
             set_error!(x, NothingEquality)
-        elseif JuliaSyntax.head(x.children[2]).kind === K"!=" && (
+        elseif JuliaSyntax.kind(x.children[2]) === K"!=" && (
             x.children[1].data.val === :nothing ||
             x.children[3].data.val === :nothing
             )
@@ -43,9 +43,9 @@ function check_nothing_equality(x::JuliaSyntax.SyntaxNode)
 end
 
 function check_if_conds(x::JuliaSyntax.SyntaxNode)
-    if JuliaSyntax.head(x).kind === K"if" || JuliaSyntax.head(x).kind === K"elseif"
+    if JuliaSyntax.kind(x) === K"if" || JuliaSyntax.kind(x) === K"elseif"
         cond = x.children[1]
-        if head(cond).kind === K"true" || head(cond).kind === K"false"
+        if JuliaSyntax.kind(cond) === K"true" || JuliaSyntax.kind(cond) === K"false"
             set_error!(cond, ConstIfCondition)  # should this be set in the condition?
         # elseif isassignment(cond)
         #     set_error!(cond, EqInIfConditional)  # is this intended?
@@ -55,11 +55,11 @@ end
 
 function check_lazy(x::JuliaSyntax.SyntaxNode)
     if is_binary_syntax(x)
-        if JuliaSyntax.head(x).kind === K"||"
+        if JuliaSyntax.kind(x) === K"||"
             if is_bool_literal(x.children[1])
                 set_error!(x, PointlessOR)
             end
-        elseif JuliaSyntax.head(x).kind === K"&&"
+        elseif JuliaSyntax.kind(x) === K"&&"
             if is_bool_literal(x.children[1]) || is_bool_literal(x.children[2])
                 set_error!(x, PointlessAND)
             end
@@ -69,17 +69,17 @@ end
 
 function check_break_continue(x::JuliaSyntax.SyntaxNode)
     if JuliaSyntax.is_keyword(x) &&
-       (JuliaSyntax.head(x).kind === K"continue" || JuliaSyntax.head(x).kind === K"break") &&
-       !is_in_fexpr(x, x -> JuliaSyntax.head(x).kind in (K"for", K"while"))
+       (JuliaSyntax.kind(x) === K"continue" || JuliaSyntax.kind(x) === K"break") &&
+       !is_in_fexpr(x, x -> JuliaSyntax.kind(x) in (K"for", K"while"))
         set_error!(x, ShouldBeInALoop)
     end
 end
 
 function check_const(x::JuliaSyntax.SyntaxNode)
-    if JuliaSyntax.head(x).kind === K"const"
+    if JuliaSyntax.kind(x) === K"const"
         if VERSION < v"1.8.0-DEV.1500" && is_assignment(x.args[1]) && is_declaration(x.children[1].children[1])
             set_error!(x, TypeDeclOnGlobalVariable)
-        elseif JuliaSyntax.head(x.children[1]).kind === K"local"
+        elseif JuliaSyntax.kind(x.children[1]) === K"local"
             set_error!(x, UnsupportedConstLocalVariable)
         end
     end
@@ -87,7 +87,7 @@ end
 
 # function check_typeparams(x::JuliaSyntax.SyntaxNode)
 #     # if iswhere(x)  -- why?
-#     if JuliaSyntax.head(x.children[1]).kind === K"where"
+#     if JuliaSyntax.kind(x.children[1]) === K"where"
 
 #         for i in 2:length(x.args)
 #             a = x.args[i]

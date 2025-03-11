@@ -61,7 +61,7 @@ end
 parent_of(x::JuliaSyntax.SyntaxNode) = x.parent
 
 function is_binary_call(x::JuliaSyntax.SyntaxNode)
-    JuliaSyntax.head(x).kind === K"call" &&
+    JuliaSyntax.kind(x) === K"call" &&
     length(x.children) == 3 &&
     JuliaSyntax.is_operator(x.children[2])
 end
@@ -73,13 +73,13 @@ function is_binary_syntax(x::JuliaSyntax.SyntaxNode)
 end
 
 function is_bool_literal(x::JuliaSyntax.SyntaxNode)
-    JuliaSyntax.head(x).kind === K"true" ||
-    JuliaSyntax.head(x).kind === K"false"
+    JuliaSyntax.kind(x) === K"true" ||
+    JuliaSyntax.kind(x) === K"false"
 end
 
-is_assignment(x::JuliaSyntax.SyntaxNode) = is_binary_syntax(x) && JuliaSyntax.head(x).kind === K"="
-is_declaration(x::JuliaSyntax.SyntaxNode) = is_binary_syntax(x) && JuliaSyntax.head(x).kind === K"::"
-defines_module(x::JuliaSyntax.SyntaxNode) = JuliaSyntax.head(x).kind === K"module"
+is_assignment(x::JuliaSyntax.SyntaxNode) = is_binary_syntax(x) && JuliaSyntax.kind(x) === K"="
+is_declaration(x::JuliaSyntax.SyntaxNode) = is_binary_syntax(x) && JuliaSyntax.kind(x) === K"::"
+defines_module(x::JuliaSyntax.SyntaxNode) = JuliaSyntax.kind(x) === K"module"
 
 is_in_fexpr(x::JuliaSyntax.SyntaxNode, f) =
     f(x) || (parent_of(x) isa JuliaSyntax.SyntaxNode && is_in_fexpr(parent_of(x), f))
