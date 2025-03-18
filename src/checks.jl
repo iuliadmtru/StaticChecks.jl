@@ -10,6 +10,7 @@ function check_all(x::JuliaSyntax.SyntaxNode, opts::LintOptions)
     opts.nothingcomp && check_nothing_equality(x)
     opts.constif && check_if_conds(x)
     opts.lazy && check_lazy(x)
+    check_use_of_literal(x)
     check_break_continue(x)
     check_const(x)
     # opts.call && check_call(x, env)
@@ -20,7 +21,6 @@ function check_all(x::JuliaSyntax.SyntaxNode, opts::LintOptions)
     # opts.pirates && check_for_pirates(x)
     # opts.useoffuncargs && check_farg_unused(x)
     # check_kw_default(x, env)
-    # check_use_of_literal(x)
 
     propagate_check(x, check_all, opts)
 end
@@ -45,7 +45,7 @@ end
 function check_if_conds(x::JuliaSyntax.SyntaxNode)
     if JuliaSyntax.kind(x) === K"if" || JuliaSyntax.kind(x) === K"elseif"
         cond = x.children[1]
-        if JuliaSyntax.kind(cond) === K"true" || JuliaSyntax.kind(cond) === K"false"
+        if is_bool_literal(cond)
             set_error!(cond, ConstIfCondition)  # should this be set in the condition?
         # elseif isassignment(cond)
         #     set_error!(cond, EqInIfConditional)  # is this intended?
@@ -82,6 +82,23 @@ function check_const(x::JuliaSyntax.SyntaxNode)
         elseif JuliaSyntax.kind(x.children[1]) === K"local"
             set_error!(x, UnsupportedConstLocalVariable)
         end
+    end
+end
+
+# These are all errors, is this check necessary?
+function check_use_of_literal(x::JuliaSyntax.SyntaxNode)
+    if defines_module(x) && length(x.args) > 1 && is_bad_literal(x.children[1]) # syntax error
+        set_error!(x.children[1], InappropriateUseOfLiteral)
+    elseif (defines_abstract(x) || defines_primitive(x)) && is_bad_literal(x.children[1]) # syntax error
+        set_error!(x.children[1], InappropriateUseOfLiteral)
+    elseif defines_struct(x) && is_bad_literal(x.children[1]) # syntax error
+        set_error!(x.children[1], InappropriateUseOfLiteral)
+    elseif is_assignment(x) && is_bad_literal(x.children[1]) # syntax error
+        set_error!(x.children[1], InappropriateUseOfLiteral)
+    elseif is_declaration(x) && is_bad_literal(x.children[2]) # `TypeError`
+        set_error!(x.children[2], InappropriateUseOfLiteral)
+    elseif is_binary_call(x, :isa) && is_bad_literal(x.children[3]) # `TypeError`
+        set_error!(x.children[3], InappropriateUseOfLiteral)
     end
 end
 

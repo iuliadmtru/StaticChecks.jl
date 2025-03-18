@@ -8,6 +8,7 @@ module StaticChecks
 
 export run_checks, run_check_nothing_comparison, run_check_const_if_cond,
        run_check_lazy, run_check_break_continue, run_check_const_local,
+       run_check_use_of_literal,
        open_and_parse
 
 # import JuliaSyntax
@@ -127,6 +128,7 @@ function run_checks(x::JuliaSyntax.SyntaxNode, opts::LintOptions; individual_che
     opts.nothingcomp && (run_check_nothing_comparison(x; propagate, kwargs...) || (pass = false))
     opts.constif && (run_check_const_if_cond(x; propagate, kwargs...) || (pass = false))
     opts.lazy && (run_check_lazy(x; propagate, kwargs...) || (pass = false))
+    run_check_use_of_literal(x; propagate, kwargs...) || (pass = false)
     run_check_break_continue(x; propagate, kwargs...) || (pass = false)
     run_check_const_local(x; propagate, kwargs...) || (pass = false)
 
@@ -267,6 +269,40 @@ function run_check_const_local(x::JuliaSyntax.SyntaxNode; annotated=true, propag
     ret = err === StaticChecks.UnsupportedConstLocalVariable
     if ret && print
         signal_error(err, x)
+    end
+
+    return ret
+end
+
+function run_check_use_of_literal(x::JuliaSyntax.SyntaxNode; annotated=true, propagate=false, print=true)
+    if !annotated
+        run_checks(x; opts=:constlocal, individual_checks=false)
+    end
+
+    node =
+        if defines_module(x)    ||
+           defines_abstract(x)  ||
+           defines_primitive(x) ||
+           defines_struct(x)    ||
+           is_assignment(x)
+            x.children[1]
+        elseif is_declaration(x)
+            x.children[2]
+        elseif is_binary_call(x)
+            x.children[3]
+        else
+            x.data.val
+        end
+    val = node.data.val
+    err = isa(val, AbstractArray) ? val[1] : val
+
+    if propagate && err !== StaticChecks.InappropriateUseOfLiteral
+        propagate_check(x, run_check_use_of_literal; propagate=true, print=print)
+    end
+
+    ret = err === StaticChecks.InappropriateUseOfLiteral
+    if ret && print
+        signal_error(err, node)
     end
 
     return ret

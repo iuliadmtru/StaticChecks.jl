@@ -49,3 +49,11 @@ end
     expr = "const x = 2"
     @test !run_check_const_local(JuliaSyntax.parsestmt(JuliaSyntax.SyntaxNode, expr); annotated=false, print=false)
 end
+
+@testset "Inapropriate use of literal" begin
+    expr = "2 = 3"
+    @test run_check_use_of_literal(JuliaSyntax.parsestmt(JuliaSyntax.SyntaxNode, expr); annotated=false, print=false)
+
+    expr = "2 isa 3"
+    @test run_check_use_of_literal(JuliaSyntax.parsestmt(JuliaSyntax.SyntaxNode, expr); annotated=false, print=false)
+end

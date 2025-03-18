@@ -1,4 +1,5 @@
 using JuliaSyntax
+using JuliaLowering
 
 function open_and_parse(filename)::JuliaSyntax.SyntaxNode
     tree = open(filename, "r") do io
@@ -60,26 +61,42 @@ end
 
 parent_of(x::JuliaSyntax.SyntaxNode) = x.parent
 
-function is_binary_call(x::JuliaSyntax.SyntaxNode)
+# Terminals
+
+is_bool_literal(x::JuliaSyntax.SyntaxNode) = JuliaSyntax.kind(x) === K"Bool"
+defines_struct(x::JuliaSyntax.SyntaxNode) = JuliaSyntax.kind(x) === K"struct"
+defines_abstract(x::JuliaSyntax.SyntaxNode) = JuliaSyntax.kind(x) === K"abstract"
+defines_primitive(x::JuliaSyntax.SyntaxNode) = JuliaSyntax.kind(x) === K"primitive"
+defines_module(x::JuliaSyntax.SyntaxNode) = JuliaSyntax.kind(x) === K"module"
+
+# Expressions
+
+is_binary_call(x::JuliaSyntax.SyntaxNode) =
     JuliaSyntax.kind(x) === K"call" &&
     length(x.children) == 3 &&
     JuliaSyntax.is_operator(x.children[2])
-end
-
-function is_binary_syntax(x::JuliaSyntax.SyntaxNode)
+is_binary_call(x::JuliaSyntax.SyntaxNode, op::Symbol) =
+    is_binary_call(x) && x.children[2].data.val == op
+is_binary_syntax(x::JuliaSyntax.SyntaxNode) =
     !isnothing(x.children) &&
     length(x.children) == 2 &&
     JuliaSyntax.is_operator(JuliaSyntax.head(x))
-end
 
-function is_bool_literal(x::JuliaSyntax.SyntaxNode)
-    JuliaSyntax.kind(x) === K"true" ||
-    JuliaSyntax.kind(x) === K"false"
-end
+is_kwarg(x::JuliaSyntax.SyntaxNode) = nothing
 
 is_assignment(x::JuliaSyntax.SyntaxNode) = is_binary_syntax(x) && JuliaSyntax.kind(x) === K"="
 is_declaration(x::JuliaSyntax.SyntaxNode) = is_binary_syntax(x) && JuliaSyntax.kind(x) === K"::"
-defines_module(x::JuliaSyntax.SyntaxNode) = JuliaSyntax.kind(x) === K"module"
 
 is_in_fexpr(x::JuliaSyntax.SyntaxNode, f) =
     f(x) || (parent_of(x) isa JuliaSyntax.SyntaxNode && is_in_fexpr(parent_of(x), f))
+
+
+## Internal individual checks utils ##
+
+is_bad_literal(x::JuliaSyntax.SyntaxNode) =
+    JuliaSyntax.is_literal(x)           &&
+    (JuliaSyntax.kind(x) === K"String"  ||
+     JuliaSyntax.kind(x) === K"Integer" ||
+     JuliaSyntax.kind(x) === K"Float"   ||
+     JuliaSyntax.kind(x) === K"char"    ||
+     JuliaSyntax.kind(x) === K"Bool")
