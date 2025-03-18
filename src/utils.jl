@@ -71,10 +71,14 @@ defines_module(x::JuliaSyntax.SyntaxNode) = JuliaSyntax.kind(x) === K"module"
 
 # Expressions
 
+is_operator(x::JuliaSyntax.SyntaxNode) =
+    JuliaSyntax.is_operator(x) ||
+    JuliaSyntax.is_syntactic_operator(x) ||
+    JuliaSyntax.kind(x) === K"Identifier" # this is wrong, but I don't know how to go around this change: https://github.com/JuliaLang/JuliaSyntax.jl/commit/35dc3bcebf9a1fe291cdc3865cb0cf018df806a6
 is_binary_call(x::JuliaSyntax.SyntaxNode) =
     JuliaSyntax.kind(x) === K"call" &&
     length(x.children) == 3 &&
-    JuliaSyntax.is_operator(x.children[2])
+    is_operator(x.children[2])
 is_binary_call(x::JuliaSyntax.SyntaxNode, op::Symbol) =
     is_binary_call(x) && x.children[2].data.val == op
 is_binary_syntax(x::JuliaSyntax.SyntaxNode) =

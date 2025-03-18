@@ -28,12 +28,13 @@ end
 
 function check_nothing_equality(x::JuliaSyntax.SyntaxNode)
     if is_binary_call(x)
-        if JuliaSyntax.kind(x.children[2]) === K"==" && (
+        op = x.children[2].data.val
+        if op === :(==) && (
             x.children[1].data.val === :nothing ||
             x.children[3].data.val === :nothing
             )
             set_error!(x, NothingEquality)
-        elseif JuliaSyntax.kind(x.children[2]) === K"!=" && (
+        elseif op === :(!=) && (
             x.children[1].data.val === :nothing ||
             x.children[3].data.val === :nothing
             )
